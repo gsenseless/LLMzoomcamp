@@ -1,6 +1,8 @@
 from fastembed import TextEmbedding
 from qdrant_client import QdrantClient, models
 import numpy as np
+import requests 
+
 
 CLIENT_URL = "http://localhost:6333"
 QUERY = 'I just discovered the course. Can I join now?'
@@ -64,6 +66,10 @@ def process_documents_and_calculate_similarities(documents, query_embeddings, em
     for i, similarity in enumerate(cosine_similarities):
         print(f"Document {i} ({documents[i]['question']}): {similarity:.4f}")
 
+    max_index = np.argmax(cosine_similarities)
+    print("\nDocument with highest similarity:")
+    print(f"Document {max_index} ({documents[max_index]}): {cosine_similarities[max_index]:.4f}")
+    
 # Q3
 process_documents_and_calculate_similarities(documents, query_embeddings, embedding_model, include_question=False)
 
@@ -74,5 +80,30 @@ process_documents_and_calculate_similarities(documents, query_embeddings, embedd
 supported_models = TextEmbedding.list_supported_models()
 min_dim_model = min(supported_models, key=lambda x: x['dim'])
 print(f"\nModel with smallest dimensionality: {min_dim_model['model']} ({min_dim_model['dim']} dimensions)")
+
+
+def load_machine_learning_zoomcamp_documents():
+    docs_url = 'https://github.com/alexeygrigorev/llm-rag-workshop/raw/main/notebooks/documents.json'
+    docs_response = requests.get(docs_url)
+    documents_raw = docs_response.json()
+
+    documents = []
+    for course in documents_raw:
+        course_name = course['course']
+        if course_name != 'machine-learning-zoomcamp':
+            continue
+
+        for doc in course['documents']:
+            doc['course'] = course_name
+            documents.append(doc)
+    return documents
+
+# Q6
+MODEL_HANDLE = 'BAAI/bge-small-en'
+embedding_model = TextEmbedding(MODEL_HANDLE)
+query_embeddings = list(embedding_model.embed(QUERY))
+
+documents = load_machine_learning_zoomcamp_documents()
+process_documents_and_calculate_similarities(documents, query_embeddings, embedding_model, include_question=True)
 
 
